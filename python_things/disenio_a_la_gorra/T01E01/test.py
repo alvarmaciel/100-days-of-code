@@ -1,5 +1,5 @@
 from timeclasses import Time, TimeDataclass
-from timezone import TimeZone
+from python_things.disenio_a_la_gorra.T01E01.timezone import TimeZone
 
 
 class Example:
