@@ -1,5 +1,6 @@
-from .timezone import TimeZone
-from dataclasses import dataclass, fields
+from python.disenio_a_la_gorra.T01E01.timezone import TimeZone
+from dataclasses import dataclass
+
 
 class TimeError(Exception):
     """ Exception raised when hour, minute or second are out of range
