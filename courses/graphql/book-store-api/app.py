@@ -1,43 +1,98 @@
 """
-Source: https://vincenttechblog.com/building-web-api-with-python-flask-graphql-sqlalchemy-and-postgresql/
+Source: 
 """
-
+# Imports
 import os
 
-from dotenv import load_dotenv
+import graphene
 from flask import Flask
+from flask_graphql import GraphQLView
 from flask_sqlalchemy import SQLAlchemy
+from graphene_sqlalchemy import SQLAlchemyConnectionField, SQLAlchemyObjectType
 
-load_dotenv()
+basedir = os.path.abspath(os.path.dirname(__file__))
 
-
+# initializing our app
 app = Flask(__name__)
 app.debug = True
 
-## Configs
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI")
-app.config["SQLALCHEMY_COMMIT_ON_TEARDOWN"] = True
+# Configs
+# Our database configurations will go here
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
+    basedir, "database.db"
+)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = True
 
-## Modules
+# Modules
+# SQLAlchemy will be initiated here
 db = SQLAlchemy(app)
 
-## Database Conf
-## SQLAlchemy Modules
+# Models
+# Our relations will be setup here
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, index=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    books = db.relationship("Book", backref="author")
+
+    def __init__(self, username, email):
+        self.username = username
+        self.email = email
+
+    def __repr__(self):
+        return f"{self.id}"
 
 
-## Models
+class Book(db.Model):
+    __tablename__ = "books"
 
-## Schema Objects
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(256), index=True, nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+
+    def __repr__(self):
+        return f"{self.title} {self.description} {self.year} {self.author_id}"
 
 
-## Routes
+# Schema Objects
+# Our schema objects will go here
+class BookObject(SQLAlchemyObjectType):
+    class Meta:
+        model = Book
+        interfaces = (graphene.relay.Node,)
+
+
+class UserObject(SQLAlchemyObjectType):
+    class Meta:
+        model = User
+        interfaces = (graphene.relay.Node,)
+
+
+class Query(graphene.ObjectType):
+    node = graphene.relay.Node.Field()
+    all_books = SQLAlchemyConnectionField(BookObject)
+    all_users = SQLAlchemyConnectionField(UserObject)
+
+
+schema = graphene.Schema(query=Query)
+# Routes
+# Our GraphQL route will go here
+app.add_url_rule(
+    "/graphql-api",
+    view_func=GraphQLView.as_view(
+        "graphql", schema=schema, graphiql=True  # for having the GraphiQL interface
+    ),
+)
+
+
 @app.route("/")
 def index():
-    """
-    Route to https://what.ever/
-    """
-    return "Welcome to El Gato Escaldado Book Store API"
+    return "Welcome to Book Store Api"
 
 
 if __name__ == "__main__":
